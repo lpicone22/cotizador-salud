@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cotizador de Salud</title>
+    <script>
+        async function cotizar() {
+            const edades = document.getElementById("edades").value.split(',').map(e => parseInt(e.trim()));
+            const hijos = parseInt(document.getElementById("hijos").value);
+            const aportes = parseInt(document.getElementById("aportes").value) || 0;
+
+            const response = await fetch("/cotizar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ edades, cantidadHijos: hijos, aportes })
+            });
+
+            const resultados = await response.json();
+            mostrarResultados(resultados);
+        }
+
+        function mostrarResultados(resultados) {
+            const contenedor = document.getElementById("resultados");
+            contenedor.innerHTML = "";
+
+            resultados.forEach(plan => {
+                const div = document.createElement("div");
+                div.innerHTML = `
+                    <h3>${plan.plan}</h3>
+                    <p>Total: $${plan.totalPagar}</p>
+                    <p>Descuento: $${plan.descuento}</p>
+                    <p>Aportes descontados: $${plan.aportesDescontar}</p>
+                    <p>IVA: $${plan.iva}</p>
+                    <button onclick="generarPDF('${plan.plan}', ${plan.totalPagar}, ${plan.descuento})">Descargar PDF</button>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        async function generarPDF(plan, total, descuento) {
+            const data = {
+                nombre: document.getElementById("nombre").value,
+                dni: document.getElementById("dni").value,
+                edades: document.getElementById("edades").value,
+                hijos: document.getElementById("hijos").value,
+                plan,
+                descuento,
+                total
+            };
+
+            const response = await fetch("/generar-pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "Cotizacion_OMINT.pdf";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Cotizador de Salud</h2>
+    <label>Nombre:</label> <input type="text" id="nombre"><br>
+    <label>DNI:</label> <input type="text" id="dni"><br>
+    <label>Edades:</label> <input type="text" id="edades"><br>
+    <label>Hijos:</label> <input type="text" id="hijos"><br>
+    <label>Aportes:</label> <input type="text" id="aportes"><br>
+    <button onclick="cotizar()">Cotizar</button>
+
+    <div id="resultados"></div>
+</body>
+</html>
+

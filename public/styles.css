@@ -1,0 +1,164 @@
+
+/* 📌 Contenedor principal: ahora centrado en pantalla */
+.container {
+    max-width: 900px;
+    background: var(--blanco);
+    padding: 30px;
+    margin: 50px auto;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Centramos el contenido */
+}
+
+/* 📌 Estilo del logo */
+.logo {
+    display: block;
+    margin: 0 auto 20px auto;
+    max-width: 200px; /* Ajusta el tamaño según el logo */
+}
+
+/* 📌 Ajustes generales */
+h1, h2 {
+    color: var(--azul-omint);
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+button {
+    display: block;
+    width: 100%; /* Que ocupe todo el ancho disponible */
+    text-align: center;
+}
+
+
+/* 🎨 Paleta de colores corporativos de OMINT */
+:root {
+    --azul-omint: #003366;
+    --azul-claro: #0056b3;
+    --gris-claro: #f2f2f2;
+    --gris-medio: #d9d9d9;
+    --blanco: #ffffff;
+    --negro: #333333;
+}
+
+/* 🌍 Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+/* 📄 Fondo de la página */
+body {
+    background-color: var(--gris-claro);
+    color: var(--negro);
+    padding: 20px;
+}
+
+/* 📌 Contenedor principal */
+.container {
+    max-width: 900px;
+    background: var(--blanco);
+    padding: 20px;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 🏷️ Títulos */
+h1, h2 {
+    color: var(--azul-omint);
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+/* 📋 Estilo de los formularios */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 🖊️ Inputs y select */
+input, select, textarea {
+    padding: 10px;
+    border: 1px solid var(--gris-medio);
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+/* 🎯 Resaltar inputs al enfocarlos */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--azul-omint);
+    box-shadow: 0 0 5px rgba(0, 51, 102, 0.3);
+}
+
+/* 🔘 Botones */
+button {
+    background-color: var(--azul-omint);
+    color: var(--blanco);
+    padding: 12px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background-color: var(--azul-claro);
+}
+
+/* ✅ Checkbox y radios */
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 💰 Estilo de valores monetarios */
+.valor {
+    font-weight: bold;
+    color: var(--azul-omint);
+    font-size: 18px;
+}
+
+/* 📊 Resultados de cotización */
+.resultado {
+    background: var(--gris-medio);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+/* 💲 Valor de cuota tachado */
+.valor-tachado {
+    text-decoration: line-through;
+    color: var(--negro);
+    font-size: 14px;
+}
+@media (max-width: 768px) {
+    .table-container {
+        overflow-x: auto; /* Permite hacer scroll horizontal si la tabla no entra */
+        display: block;
+        width: 100%;
+    }
+    
+    table {
+        min-width: 700px; /* Evita que la tabla se achique demasiado */
+        font-size: 14px;
+    }
+    
+    th, td {
+        padding: 6px;
+        text-align: center;
+        white-space: nowrap; /* Evita que los textos largos se corten */
+    }
+    
+    .plan-checkbox {
+        width: 18px;
+        height: 18px;
+    }
+}

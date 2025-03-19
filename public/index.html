@@ -1,180 +1,209 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="stylesheet" href="styles.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotizador de Planes de Salud</title>
+    <title>Cotizador de Salud</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            max-width: 800px;
+            margin: auto;
             text-align: center;
-            padding: 20px;
         }
         .container {
-            max-width: 600px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            margin: auto;
-        }
-        h2 {
-            color: #004A99;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-        }
-        input, select {
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #004A99;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            cursor: pointer;
-            margin-top: 10px;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #003366;
-        }
-        #resultados {
+            text-align: left;
             margin-top: 20px;
+        }
+        .logo {
+            width: 150px;
+            display: block;
+            margin: 10px auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
             text-align: left;
         }
-        .plan-box {
-            background: #eaf4ff;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            border: 1px solid #004A99;
-            text-align: left;
-            position: relative;
+        th {
+            background-color: #f4f4f4;
         }
         .plan-checkbox {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+            width: 20px;
+            height: 20px;
         }
     </style>
 </head>
 <body>
+    <img src="Nueva carpeta/LOGO-Omint-AZUL-Cmn-minuscula.png" alt="OMINT" class="logo">
+    <h1>Cotizador para Pymes</h1>
+
     <div class="container">
-        <h2>Cotizador de Planes de Salud</h2>
+        <label>Nombre y Apellido: <input type="text" id="nombre"></label><br>
+        <label>Tipo de Documento: 
+            <select id="tipoDocumento">
+                <option value="DNI">DNI</option>
+                <option value="CUIL">CUIL</option>
+                <option value="Pasaporte">Pasaporte</option>
+            </select>
+        </label><br>
+        <label>Número de Documento: <input type="text" id="numeroDocumento"></label><br>
+        <label>Cantidad de Integrantes: <input type="number" id="cantidadIntegrantes"></label><br>
+        <label>Mail de Contacto: <input type="email" id="mail"></label><br>
+        <label>Celular de Contacto: <input type="text" id="celular"></label><br>
+        <label>Instagram del Asesor: <input type="text" id="instagram"></label><br>
+        <label>Observaciones: <textarea id="observaciones"></textarea></label><br>
+        <label>Edades (separadas por coma): <input type="text" id="edades"></label><br>
+        <label>Cantidad de Hijos: <input type="number" id="cantidadHijos"></label><br>
+        <label>Aportes 3%: <input type="number" id="aportes"></label><br>
 
-        <label>Edades (separadas por coma):</label>
-        <input type="text" id="edades" placeholder="Ejemplo: 26,35,20,45">
-        
-        <label>Cantidad de Hijos:</label>
-        <input type="number" id="hijos" placeholder="Ejemplo: 2" min="0">
-        
-        <label>Aportes ($):</label>
-        <input type="number" id="aportes" placeholder="Ejemplo: 32000" min="0">
+        <button onclick="cotizarPlanes()">Cotizar</button>
 
-        <button onclick="cotizar()">Cotizar</button>
+        <h2>Resultados de Cotización</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Seleccionar</th>
+                    <th>Plan</th>
+                    <th>Valor Cuota</th>
+                    <th>Descuento</th>
+                    <th>Cuota con Descuento</th>
+                    <th>Aportes</th>
+                    <th>IVA</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="resultadoCotizacion">
+            </tbody>
+        </table>
 
-        <div id="resultados"></div>
-
-        <button id="descargarPdf" style="display: none;" onclick="descargarPDF()">Descargar Presupuesto</button>
+        <button onclick="generarPDF()">Generar PDF</button>
     </div>
 
     <script>
-        function cotizar() {
-            var edades = document.getElementById('edades').value.split(',').map(e => parseInt(e.trim()));
-            var cantidadHijos = parseInt(document.getElementById('hijos').value);
-            var aportes = parseFloat(document.getElementById('aportes').value) || 0;
+        document.addEventListener("DOMContentLoaded", function () {
+        if (!localStorage.getItem("auth")) {
+            let usuario = prompt("Ingrese usuario:");
+            let clave = prompt("Ingrese contraseña:");
 
-            fetch("http://localhost:3000/cotizar", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ edades, cantidadHijos, aportes })
-            })
-            .then(response => response.json())
-            .then(resultados => {
-                console.log("Respuesta del servidor:", resultados);
-                
-                var contenedor = document.getElementById("resultados");
-                contenedor.innerHTML = "";
-
-                if (Array.isArray(resultados)) { 
-                    resultados.forEach(plan => {
-                        let planId = plan.plan.replace(/\s+/g, '-'); // Reemplazar espacios en nombres de planes
-                        contenedor.innerHTML += `
-                            <div class="plan-box">
-                                <input type="checkbox" class="plan-checkbox" id="${planId}" value="${plan.plan}" onchange="seleccionarPlan('${planId}')">
-                                <strong>${plan.plan}</strong><br>
-                                <b>Valor de Cuota:</b> $${plan.valorCuota} <br>
-                                <b>Descuento (30%):</b> -$${plan.descuentoAplicado} <br>
-                                <b>Cuota con Descuento:</b> $${plan.cuotaConDescuento} <br>
-                                <b>Aportes Estimados:</b> -$${plan.aportesEstimados} <br>
-                                <b>IVA Aplicado:</b> $${plan.ivaAplicado} <br>
-                                <b>Total a Pagar:</b> <span style="font-size: 18px; color: #004A99;">$${plan.totalPagar}</span>
-                            </div>`;
-                    });
-
-                    // Mostrar el botón de "Descargar Presupuesto" solo si hay resultados
-                    document.getElementById("descargarPdf").style.display = "block";
-                } else {
-                    contenedor.innerHTML = "<p style='color:red;'>Error en la cotización. Intente nuevamente.</p>";
-                }
-            })
-            .catch(error => console.error("Error al cotizar:", error));
-        }
-
-        let planesSeleccionados = [];
-
-        function seleccionarPlan(planId) {
-            let checkbox = document.getElementById(planId);
-            if (checkbox.checked) {
-                if (planesSeleccionados.length >= 3) {
-                    checkbox.checked = false;
-                    alert("Solo puedes seleccionar hasta 3 planes.");
-                    return;
-                }
-                planesSeleccionados.push(checkbox.value);
+            if (usuario !== "ventasomint" || clave !== "team8") {
+                alert("Acceso denegado");
+                document.body.innerHTML = "<h1>Acceso restringido</h1>";
             } else {
-                planesSeleccionados = planesSeleccionados.filter(plan => plan !== checkbox.value);
+                localStorage.setItem("auth", "true");
             }
-            console.log("Planes seleccionados:", planesSeleccionados);
+        }
+    });
+        let planesCotizados = [];
+
+        async function cotizarPlanes() {
+            const edadesInput = document.getElementById("edades").value;
+            const edades = edadesInput.split(",").map(e => parseInt(e.trim(), 10)).filter(e => !isNaN(e));
+            const cantidadHijos = parseInt(document.getElementById("cantidadHijos").value, 10) || 0;
+            const aportes = parseInt(document.getElementById("aportes").value, 10) || 0;
+
+            const respuesta = await fetch("/cotizar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ edades, cantidadHijos, aportes })
+            });
+
+            planesCotizados = await respuesta.json();
+            mostrarResultados();
         }
 
-        function descargarPDF() {
-            if (planesSeleccionados.length === 0) {
-                alert("Debes seleccionar al menos un plan para generar el presupuesto.");
+        function mostrarResultados() {
+            const tbody = document.getElementById("resultadoCotizacion");
+            tbody.innerHTML = "";
+
+            planesCotizados.forEach(plan => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td><input type="checkbox" class="plan-checkbox" value="${plan.nombre}"></td>
+                    <td>${plan.nombre}</td>
+                    <td>${plan.valorCuota}</td>
+                    <td>${plan.descuento}</td>
+                    <td>${plan.cuotaConDescuento}</td>
+                    <td>${plan.aportesEstimados}</td>
+                    <td>${plan.ivaAplicado}</td>
+                    <td>${plan.totalPagar}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        async function generarPDF() {
+            const nombre = document.getElementById("nombre").value;
+            const tipoDocumento = document.getElementById("tipoDocumento").value;
+            const numeroDocumento = document.getElementById("numeroDocumento").value;
+            const cantidadIntegrantes = document.getElementById("cantidadIntegrantes").value;
+            const mail = document.getElementById("mail").value;
+            const celular = document.getElementById("celular").value;
+            const instagram = document.getElementById("instagram").value;
+            const observaciones = document.getElementById("observaciones").value;
+
+            const edadesInput = document.getElementById("edades").value;
+            const edades = edadesInput.split(",").map(e => parseInt(e.trim(), 10)).filter(e => !isNaN(e));
+            const cantidadHijos = parseInt(document.getElementById("cantidadHijos").value, 10) || 0;
+
+            const checkboxes = document.querySelectorAll(".plan-checkbox:checked");
+            if (checkboxes.length === 0) {
+                alert("Selecciona al menos un plan para generar el PDF.");
                 return;
             }
 
-            fetch("http://localhost:3000/generar-pdf", {
+            const planesSeleccionados = [];
+            const detallesPlanes = {};
+
+            checkboxes.forEach(checkbox => {
+                const planNombre = checkbox.value;
+                const planData = planesCotizados.find(p => p.nombre === planNombre);
+                if (planData) {
+                    planesSeleccionados.push(planNombre);
+                    detallesPlanes[planNombre] = planData;
+                }
+            });
+
+            const respuesta = await fetch("/generar-pdf", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ planesSeleccionados })
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                let url = window.URL.createObjectURL(blob);
-                let a = document.createElement("a");
-                a.href = url;
-                a.download = "Presupuesto_Salud.pdf";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            })
-            .catch(error => console.error("Error al generar el PDF:", error));
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    nombre,
+                    tipoDocumento,
+                    numeroDocumento,
+                    cantidadIntegrantes,
+                    mail,
+                    celular,
+                    instagram,
+                    observaciones,
+                    edades,
+                    cantidadHijos,
+                    planesSeleccionados,
+                    detallesPlanes
+                })
+            });
+
+            if (respuesta.ok) {
+                const blob = await respuesta.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "presupuesto_final.pdf";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert("Error al generar el PDF.");
+            }
         }
     </script>
 </body>
 </html>
-

@@ -1,34 +1,30 @@
 const express = require("express");
 const path = require("path");
-const xlsx = require("xlsx");
 const fs = require("fs");
-const { PDFDocument } = require("pdf-lib");
+const xlsx = require("xlsx"); // Librería para leer Excel
+
+
+const cors = require("cors");
+
+
 
 const app = express();
 const PORT = 3000;
 
-// Middleware para procesar JSON en las solicitudes POST
+app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
-// Servir archivos estáticos desde la carpeta "public"
-app.use(express.static(path.join(__dirname, "public")));
-
-// Ruta para servir "index.html"
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// Cargar los datos del archivo Excel (Lista de Precios)
+const PDF_PATH = path.join(__dirname, "public", "presupuesto_base_1.pdf");
 const workbook = xlsx.readFile("cotizador.xlsx");
 const sheetName = workbook.SheetNames[0];
 const sheet = workbook.Sheets[sheetName];
 const precios = xlsx.utils.sheet_to_json(sheet);
 
-// Ruta para manejar la cotización
+// **Ruta para cotizar TODOS los planes**
 app.post("/cotizar", (req, res) => {
     try {
         const { edades, cantidadHijos, aportes } = req.body;
-
         if (!edades || cantidadHijos === undefined) {
             return res.status(400).json({ error: "Faltan datos para la cotización" });
         }
@@ -37,8 +33,6 @@ app.post("/cotizar", (req, res) => {
 
         precios.forEach(plan => {
             let totalPrecio = 0;
-
-            // Calcular precios por edad
             edades.forEach(edad => {
                 if (edad >= 18 && edad <= 25) totalPrecio += plan["18-25"];
                 else if (edad >= 26 && edad <= 35) totalPrecio += plan["26-35"];
@@ -47,7 +41,6 @@ app.post("/cotizar", (req, res) => {
                 else if (edad >= 60) totalPrecio += plan["60"];
             });
 
-            // Calcular costos de hijos
             let costoHijo1 = cantidadHijos > 0 ? plan["HIJO 1"] : 0;
             let costoHijos2 = cantidadHijos > 1 ? plan["HIJO 2 o +"] * (cantidadHijos - 1) : 0;
             let costoTotalHijos = costoHijo1 + costoHijos2;
@@ -61,77 +54,119 @@ app.post("/cotizar", (req, res) => {
             let totalPagar = Math.max(0, cuotaFinal + iva);
 
             resultados.push({
-                plan: plan["PLAN"],
-                valorCuota: valorCuota,
-                descuentoAplicado: descuento,
-                cuotaConDescuento: cuotaConDescuento,
+                nombre: plan["PLAN"],
+                valorCuota,
+                descuento,
+                cuotaConDescuento,
                 aportesEstimados: aportesDescontar,
                 cuotaFinalConAportes: cuotaFinal,
                 ivaAplicado: iva,
-                totalPagar: totalPagar
+                totalPagar
             });
         });
 
         res.json(resultados);
     } catch (error) {
         console.error("Error en /cotizar:", error);
-        res.status(500).json({ error: "Error interno del servidor" });
+        res.status(500).json({ error: "Error en la cotización" });
     }
 });
 
-// Ruta para generar el PDF con los datos seleccionados
+// Función para formatear los valores numéricos como moneda ($)
+const formatoMoneda = (valor) => {
+    return valor ? `$${new Intl.NumberFormat("es-AR").format(valor)}` : "$0";
+};
+const { PDFDocument, StandardFonts } = require("pdf-lib"); // Asegúrate de importar StandardFonts
+
+// **Ruta para generar el PDF con los planes seleccionados**
 app.post("/generar-pdf", async (req, res) => {
     try {
-        const { planesSeleccionados, nombre, edades, cantidadHijos } = req.body;
+        const { nombre, edades, cantidadHijos, planesSeleccionados, detallesPlanes, tipoDocumento, numeroDocumento, cantidadIntegrantes, mail, celular, instagram, observaciones } = req.body;
 
         if (!planesSeleccionados || planesSeleccionados.length === 0) {
-            return res.status(400).json({ error: "No se han seleccionado planes" });
+            return res.status(400).json({ error: "Debe seleccionar al menos un plan" });
         }
 
-        // Cargar el PDF desde local (debes haberlo guardado en la carpeta del proyecto)
-        const pdfPath = path.join(__dirname, "presupuesto_base.pdf");
-        const existingPdfBytes = fs.readFileSync(pdfPath);
-
-        // Cargar el PDF y editarlo
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
+        const pdfBytes = fs.readFileSync(PDF_PATH);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
         const form = pdfDoc.getForm();
+        const fields = form.getFields().map(f => f.getName());
+        console.log("Campos encontrados en el PDF:", fields);
 
-        // Obtener la fecha actual
+        // **Función para asignar valores asegurando que no haya errores con valores vacíos**
+        const asignarCampo = (campo, valor, formatoMoneda = false) => {
+            if (form.getTextField(campo)) {
+                let valorFinal = valor !== undefined && valor !== null ? valor.toString() : "0";
+
+                // **Aplicar formato de moneda**
+                if (formatoMoneda && !isNaN(valor)) {
+                    valorFinal = `$ ${new Intl.NumberFormat("es-AR").format(valor)}`;
+                }
+
+                form.getTextField(campo).setText(valorFinal);
+            }
+        };
+
+        // **Asignar Datos Generales**
+        asignarCampo("Nombre y apellido", nombre);
+        asignarCampo("Tipo de documennto", tipoDocumento);
+        asignarCampo("Número de documento", numeroDocumento);
+        asignarCampo("Cantidad de integrantes", cantidadIntegrantes);
+        asignarCampo("Mail de contacto", mail);
+        asignarCampo("Celular de contacto", celular);
+        asignarCampo("Instagram del asesor", instagram);
+        asignarCampo("Observaciones", observaciones);
+        asignarCampo("edades", edades ? edades.join(", ") : "");
+        asignarCampo("cantidad de hijos", cantidadHijos);
+
+        // **Asignar Aporte Total a Descontar con formato de moneda**
+        asignarCampo("Aporte", detallesPlanes[planesSeleccionados[0]]?.aportesEstimados || "0", true);
+
+        // ✅ **Asignar Fecha de Cotización**
         const fecha = new Date();
-        const dia = fecha.getDate().toString();
-        const mes = (fecha.getMonth() + 1).toString();
-        const anio = fecha.getFullYear().toString();
+        asignarCampo("día", fecha.getDate());
+        asignarCampo("mes", fecha.getMonth() + 1);
+        asignarCampo("año", fecha.getFullYear());
 
-        // Llenar los campos del PDF
-        if (nombre) form.getTextField("Nombre y Apellido").setText(nombre);
-        form.getTextField("dia").setText(dia);
-        form.getTextField("mes").setText(mes);
-        form.getTextField("año").setText(anio);
-        form.getTextField("Edades").setText(edades.join(", "));
-        form.getTextField("Cantidad de Hijos").setText(cantidadHijos.toString());
-
-        // Llenar los planes seleccionados en el PDF
+        // ✅ **Manejo de los Planes Seleccionados**
         planesSeleccionados.forEach((plan, index) => {
             if (index < 3) {
-                form.getTextField(`Plan ${index + 1}`).setText(plan);
-                form.getTextField(`IVA Plan ${index + 1}`).setText("0"); // Modificar si aplica IVA
-                form.getTextField(`Descuento Plan ${index + 1}`).setText("0"); // Modificar si aplica descuento
-                form.getTextField(`Total Plan ${index + 1}`).setText("0"); // Modificar si aplica total
+                asignarCampo(`Plan ${index + 1}`, plan);
+                asignarCampo(`Total Plan ${index + 1}`, detallesPlanes[plan]?.totalPagar || "0", true);
+                asignarCampo(`descuento plan ${index + 1}`, detallesPlanes[plan]?.descuento || "0", true);
+                asignarCampo(`IVA PLAN ${index + 1}`, detallesPlanes[plan]?.ivaAplicado || "0", true);
+
+                // ✅ **Agregar el Valor Cuota sin descuentos (precio base del plan)**
+                asignarCampo(`ValorCuota${index + 1}`, detallesPlanes[plan]?.valorCuota || "0", true);
+
+                // ✅ **Nueva lógica de Copagos: Si el plan termina en "_20", se asigna "Si", de lo contrario "No"**
+                const copagoValor = plan.includes("_20") ? "Si" : "No";
+
+                if (index === 0) asignarCampo("Copagos plan1", copagoValor);
+                if (index === 1) asignarCampo("Copagos plan2", copagoValor);
+                if (index === 2) asignarCampo("Copagos plan3", copagoValor);
             }
         });
 
-        // Guardar el PDF editado
-        const pdfBytes = await pdfDoc.save();
-        res.setHeader("Content-Disposition", "attachment; filename=Presupuesto_Salud.pdf");
-        res.setHeader("Content-Type", "application/pdf");
-        res.send(Buffer.from(pdfBytes));
+        // **Convertir el PDF en no editable (cerrarlo)**
+        form.flatten();
+
+        // ✅ **Guardar el PDF generado**
+        const pdfBytesFinal = await pdfDoc.save();
+        const pdfPathOutput = path.join(__dirname, "public", "presupuesto_final.pdf");
+        fs.writeFileSync(pdfPathOutput, pdfBytesFinal);
+
+        res.download(pdfPathOutput, "presupuesto_final.pdf");
+
     } catch (error) {
-        console.error("Error en /generar-pdf:", error);
-        res.status(500).json({ error: "Error al generar el PDF" });
+        console.error("Error al generar el PDF:", error);
+        res.status(500).send("Error al generar el PDF");
     }
 });
 
-// Iniciar el servidor
+
+
+// Iniciar servidor
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

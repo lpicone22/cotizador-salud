@@ -128,25 +128,30 @@ app.post("/generar-pdf", async (req, res) => {
         asignarCampo("mes", fecha.getMonth() + 1);
         asignarCampo("año", fecha.getFullYear());
 
-        // ✅ **Manejo de los Planes Seleccionados**
-        planesSeleccionados.forEach((plan, index) => {
-            if (index < 3) {
-                asignarCampo(`Plan ${index + 1}`, plan);
-                asignarCampo(`Total Plan ${index + 1}`, detallesPlanes[plan]?.totalPagar || "0", true);
-                asignarCampo(`descuento plan ${index + 1}`, detallesPlanes[plan]?.descuento || "0", true);
-                asignarCampo(`IVA PLAN ${index + 1}`, detallesPlanes[plan]?.ivaAplicado || "0", true);
+        // ✅ **Manejo dinámico de los Planes Seleccionados (1, 2 o 3)**
+for (let i = 0; i < 3; i++) {
+    const plan = planesSeleccionados[i];
 
-                // ✅ **Agregar el Valor Cuota sin descuentos (precio base del plan)**
-                asignarCampo(`ValorCuota${index + 1}`, detallesPlanes[plan]?.valorCuota || "0", true);
+    if (plan && detallesPlanes[plan]) {
+        asignarCampo(`Plan ${i + 1}`, plan);
+        asignarCampo(`Total Plan ${i + 1}`, detallesPlanes[plan].totalPagar || "0", true);
+        asignarCampo(`descuento plan ${i + 1}`, detallesPlanes[plan].descuento || "0", true);
+        asignarCampo(`IVA PLAN ${i + 1}`, detallesPlanes[plan].ivaAplicado || "0", true);
+        asignarCampo(`ValorCuota${i + 1}`, detallesPlanes[plan].valorCuota || "0", true);
 
-                // ✅ **Nueva lógica de Copagos: Si el plan termina en "_20", se asigna "Si", de lo contrario "No"**
-                const copagoValor = plan.includes("_20") ? "Si" : "No";
+        const copagoValor = plan.includes("_20") ? "Si" : "No";
+        asignarCampo(`Copagos plan${i + 1}`, copagoValor);
+    } else {
+        // Si no hay plan, dejamos el campo vacío o con "—"
+        asignarCampo(`Plan ${i + 1}`, "—");
+        asignarCampo(`Total Plan ${i + 1}`, "—");
+        asignarCampo(`descuento plan ${i + 1}`, "—");
+        asignarCampo(`IVA PLAN ${i + 1}`, "—");
+        asignarCampo(`ValorCuota${i + 1}`, "—");
+        asignarCampo(`Copagos plan${i + 1}`, "—");
+    }
+}
 
-                if (index === 0) asignarCampo("Copagos plan1", copagoValor);
-                if (index === 1) asignarCampo("Copagos plan2", copagoValor);
-                if (index === 2) asignarCampo("Copagos plan3", copagoValor);
-            }
-        });
 
         // **Convertir el PDF en no editable (cerrarlo)**
         form.flatten();

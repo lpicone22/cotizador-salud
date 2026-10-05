@@ -46,7 +46,7 @@ app.post("/cotizar", (req, res) => {
             let costoTotalHijos = costoHijo1 + costoHijos2;
 
             let valorCuota = Math.round(totalPrecio + costoTotalHijos);
-            let descuento = Math.round(valorCuota * 0.3);
+            let descuento = Math.round(valorCuota * 0.2);
             let cuotaConDescuento = Math.round(valorCuota - descuento);
             let aportesDescontar = Math.round((aportes / 0.03) * 0.075);
             let cuotaFinal = Math.round(cuotaConDescuento - aportesDescontar);
